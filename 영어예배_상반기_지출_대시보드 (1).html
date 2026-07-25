@@ -1,0 +1,692 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>영어예배 상반기 지출 대시보드</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.5.0/chart.umd.min.js"></script>
+<style>
+  :root{
+    --paper:#F6F3EC;
+    --card:#FFFFFF;
+    --ink:#212B2A;
+    --ink-soft:#5B6461;
+    --ink-faint:#8B8779;
+    --line:#E3DDCC;
+    --line-strong:#D2C9B2;
+
+    --regular:#1F6F72;
+    --regular-soft:#DCEBEA;
+    --teal-1:#1F6F72;
+    --teal-2:#4C9691;
+    --teal-3:#8FC0B7;
+
+    --irregular:#B85A22;
+    --irregular-soft:#F3E1CF;
+    --rust-1:#B85A22;
+    --rust-2:#CC7C3F;
+    --rust-3:#DE9F5D;
+    --rust-4:#EABE8B;
+
+    --shadow: 0 1px 2px rgba(33,43,42,0.04), 0 8px 24px -12px rgba(33,43,42,0.12);
+  }
+
+  *{ box-sizing:border-box; }
+  html,body{ margin:0; padding:0; }
+  body{
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'IBM Plex Sans KR', sans-serif;
+    -webkit-font-smoothing:antialiased;
+    padding: 40px 20px 80px;
+  }
+  img,svg,canvas{ max-width:100%; }
+  .mono{ font-family:'IBM Plex Mono','IBM Plex Sans KR',monospace; font-variant-numeric: tabular-nums; }
+
+  .wrap{ max-width:1180px; margin:0 auto; }
+
+  /* ---------- Header ---------- */
+  .eyebrow{
+    font-family:'IBM Plex Mono';
+    font-size:12px;
+    letter-spacing:0.16em;
+    color:var(--ink-faint);
+    text-transform:uppercase;
+    margin-bottom:10px;
+  }
+  h1{
+    font-size:clamp(28px,4vw,40px);
+    font-weight:700;
+    letter-spacing:-0.01em;
+    margin:0 0 10px;
+    line-height:1.2;
+  }
+  .subtitle{
+    color:var(--ink-soft);
+    font-size:14.5px;
+    line-height:1.7;
+    max-width:640px;
+    margin:0 0 32px;
+  }
+  .subtitle b{ color:var(--ink); font-weight:600; }
+
+  /* ---------- Receipt summary strip ---------- */
+  .receipt{
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:14px;
+    box-shadow:var(--shadow);
+    padding:28px 32px 0;
+    margin-bottom:40px;
+    overflow:hidden;
+  }
+  .receipt-top{
+    display:flex;
+    flex-wrap:wrap;
+    justify-content:space-between;
+    align-items:flex-end;
+    gap:24px;
+    padding-bottom:26px;
+  }
+  .receipt-total .label{
+    font-size:12.5px;
+    color:var(--ink-faint);
+    letter-spacing:0.06em;
+    margin-bottom:8px;
+  }
+  .receipt-total .amount{
+    font-family:'IBM Plex Mono';
+    font-weight:600;
+    font-size:clamp(32px,5vw,48px);
+    letter-spacing:-0.01em;
+  }
+  .receipt-total .amount span{ font-size:0.5em; color:var(--ink-faint); margin-left:6px; font-weight:500; }
+
+  .receipt-stats{ display:flex; gap:20px 28px; flex-wrap:wrap; }
+  .rstat{ min-width:100px; }
+  .rstat .dot{ display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:6px; }
+  .rstat .rlabel{ font-size:12px; color:var(--ink-soft); margin-bottom:6px; }
+  .rstat .rvalue{ font-family:'IBM Plex Mono'; font-weight:600; font-size:19px; }
+  .rstat .rpct{ font-family:'IBM Plex Mono'; font-size:12px; color:var(--ink-faint); margin-left:4px; }
+
+  .perforation{
+    position:relative;
+    height:0;
+    border-top:1.5px dashed var(--line-strong);
+    margin:0 -32px;
+  }
+  .perforation::before, .perforation::after{
+    content:"";
+    position:absolute; top:-10px;
+    width:20px; height:20px;
+    background:var(--paper);
+    border-radius:50%;
+  }
+  .perforation::before{ left:-10px; }
+  .perforation::after{ right:-10px; }
+  .receipt-note{
+    padding:14px 32px 18px;
+    font-family:'IBM Plex Mono';
+    font-size:11.5px;
+    color:var(--ink-faint);
+    letter-spacing:0.03em;
+    display:flex;
+    justify-content:space-between;
+    flex-wrap:wrap;
+    gap:6px;
+  }
+
+  /* ---------- Section shell ---------- */
+  section{ margin-bottom:44px; }
+  .section-head{ margin-bottom:20px; }
+  .section-head .num{
+    font-family:'IBM Plex Mono';
+    color:var(--ink-faint);
+    font-size:12px;
+    letter-spacing:0.1em;
+  }
+  .section-head h2{
+    font-size:21px;
+    font-weight:700;
+    margin:4px 0 6px;
+  }
+  .section-head p{
+    font-size:13.5px;
+    color:var(--ink-soft);
+    margin:0;
+  }
+
+  .card{
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:14px;
+    box-shadow:var(--shadow);
+    padding:28px;
+  }
+
+  /* ---------- Chart + legend layout ---------- */
+  .chart-flex{
+    display:grid;
+    grid-template-columns: 1.5fr 1fr;
+    gap:32px;
+    align-items:center;
+  }
+  @media (max-width: 860px){
+    .chart-flex{ grid-template-columns:1fr; }
+  }
+  .chart-box{ position:relative; height:340px; }
+  .chart-box.donut{ height:300px; }
+
+  /* Legend: monthly (regular/irregular) */
+  .legend-simple{ display:flex; flex-direction:column; gap:14px; }
+  .legend-item{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:14px 16px;
+    border-radius:10px;
+    border:1px solid var(--line);
+    background:var(--paper);
+    cursor:default;
+    transition:transform .15s ease, box-shadow .15s ease;
+  }
+  .legend-item:hover{ transform:translateY(-1px); box-shadow:0 4px 14px -6px rgba(33,43,42,0.18); }
+  .legend-item .li-left{ display:flex; align-items:center; gap:10px; }
+  .legend-swatch{ width:14px; height:14px; border-radius:4px; flex:none; }
+  .legend-name{ font-weight:600; font-size:14.5px; }
+  .legend-sub{ font-size:11.5px; color:var(--ink-faint); margin-top:2px; }
+  .legend-right{ text-align:right; }
+  .legend-amount{ font-family:'IBM Plex Mono'; font-weight:600; font-size:15px; }
+  .legend-pct{ font-family:'IBM Plex Mono'; font-size:11.5px; color:var(--ink-faint); }
+
+  /* Legend: category breakdown */
+  .legend-group-title{
+    font-family:'IBM Plex Mono';
+    font-size:11px;
+    letter-spacing:0.1em;
+    color:var(--ink-faint);
+    text-transform:uppercase;
+    margin:18px 0 8px;
+  }
+  .legend-group-title:first-child{ margin-top:0; }
+  .cat-row{
+    display:flex; align-items:center; gap:12px;
+    padding:9px 4px;
+    border-bottom:1px solid var(--line);
+  }
+  .cat-row:last-child{ border-bottom:none; }
+  .cat-swatch{ width:12px; height:12px; border-radius:3px; flex:none; }
+  .cat-name{ font-size:13.5px; font-weight:500; flex:1; }
+  .cat-bar-track{ flex:1; height:6px; background:var(--line); border-radius:3px; overflow:hidden; display:none; }
+  .cat-amount{ font-family:'IBM Plex Mono'; font-size:13px; font-weight:600; white-space:nowrap; }
+  .cat-pct{ font-family:'IBM Plex Mono'; font-size:11.5px; color:var(--ink-faint); width:44px; text-align:right; }
+
+  /* ---------- Table ---------- */
+  .table-scroll{ overflow-x:auto; }
+  table{ width:100%; border-collapse:collapse; min-width:760px; }
+  thead th{
+    font-size:11.5px;
+    font-weight:600;
+    letter-spacing:0.03em;
+    color:#fff;
+    padding:10px 12px;
+    text-align:right;
+    white-space:nowrap;
+  }
+  thead th:first-child, thead th.grp{ text-align:center; }
+  thead .grp-regular{ background:var(--regular); }
+  thead .grp-irregular{ background:var(--irregular); }
+  thead .grp-total{ background:#3A4441; }
+  thead th:first-child{ position:sticky; left:0; z-index:2; }
+  tbody td:first-child, tfoot td:first-child{ position:sticky; left:0; z-index:1; }
+  tfoot td:first-child{ background:#F0EEE4 !important; }
+  tbody td{
+    font-family:'IBM Plex Mono';
+    font-size:13px;
+    padding:10px 12px;
+    text-align:right;
+    border-bottom:1px solid var(--line);
+    white-space:nowrap;
+  }
+  tbody td:first-child{
+    font-family:'IBM Plex Sans KR';
+    font-weight:600;
+    text-align:center;
+    background:var(--paper);
+  }
+  tbody tr:hover td{ background:#FBFAF6; }
+  tbody tr:hover td:first-child{ background:#F0EEE4; }
+  td.subtotal-reg{ background:var(--regular-soft); font-weight:600; }
+  td.subtotal-irr{ background:var(--irregular-soft); font-weight:600; }
+  td.zero{ color:var(--ink-faint); opacity:.55; }
+  tfoot td{
+    font-family:'IBM Plex Mono';
+    font-weight:700;
+    padding:12px;
+    text-align:right;
+    border-top:2px solid var(--ink);
+    background:#F0EEE4;
+  }
+  tfoot td:first-child{ text-align:center; font-family:'IBM Plex Sans KR'; }
+
+  /* ---------- Footer ---------- */
+  .footnote{
+    font-size:12px;
+    color:var(--ink-faint);
+    line-height:1.8;
+    border-top:1px solid var(--line);
+    padding-top:20px;
+    margin-top:8px;
+  }
+  .footnote b{ color:var(--ink-soft); }
+
+  .scroll-hint{
+    display:none;
+    font-family:'IBM Plex Mono';
+    font-size:11px;
+    color:var(--ink-faint);
+    margin-bottom:10px;
+    letter-spacing:0.02em;
+  }
+
+  /* ---------- Mobile ---------- */
+  @media (max-width: 640px){
+    body{ padding:24px 12px 56px; }
+    .subtitle{ font-size:13.5px; }
+    .receipt{ padding:20px 18px 0; border-radius:12px; }
+    .receipt-top{ gap:18px; padding-bottom:20px; }
+    .perforation{ margin:0 -18px; }
+    .receipt-note{ padding:12px 18px 16px; font-size:10.5px; }
+    .receipt-stats{ gap:14px 22px; }
+    .rstat .rvalue{ font-size:17px; }
+
+    section{ margin-bottom:32px; }
+    .section-head h2{ font-size:18px; }
+    .section-head p{ font-size:12.5px; }
+
+    .card{ padding:16px; border-radius:12px; }
+    .chart-box{ height:240px; }
+    .chart-box.donut{ height:220px; }
+    .chart-flex{ gap:22px; }
+
+    .legend-item{ padding:12px 14px; }
+    .legend-name{ font-size:13.5px; }
+    .legend-amount{ font-size:14px; }
+
+    .cat-name{ font-size:13px; }
+    .cat-amount{ font-size:12px; }
+
+    .scroll-hint{ display:block; }
+    thead th{ font-size:10.5px; padding:8px 9px; }
+    tbody td, tfoot td{ font-size:12px; padding:8px 9px; }
+
+    .footnote{ font-size:11px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="eyebrow">2026 · JAN – JUL · ENGLISH SERVICE FINANCE</div>
+  <h1>영어예배 상반기 지출 대시보드</h1>
+  <p class="subtitle">
+    2026년 1월부터 7월까지의 지출 <b>159건</b>을 정리했습니다.
+    <b>정기</b>는 간식비·비품비·스탭 식교제비, <b>비정기</b>는 아웃리치·아가페밀·특별행사비·1주년 행사로 구분했습니다.
+  </p>
+
+  <div class="receipt">
+    <div class="receipt-top">
+      <div class="receipt-total">
+        <div class="label">상반기 총 지출</div>
+        <div class="amount mono" id="grandTotal">0<span>원</span></div>
+      </div>
+      <div class="receipt-stats">
+        <div class="rstat">
+          <div class="rlabel"><span class="dot" style="background:var(--regular)"></span>정기 총계</div>
+          <div class="rvalue mono" id="regTotal">0</div><span class="rpct" id="regPct"></span>
+        </div>
+        <div class="rstat">
+          <div class="rlabel"><span class="dot" style="background:var(--irregular)"></span>비정기 총계</div>
+          <div class="rvalue mono" id="irrTotal">0</div><span class="rpct" id="irrPct"></span>
+        </div>
+        <div class="rstat">
+          <div class="rlabel">전체 지출 건수</div>
+          <div class="rvalue mono">159<span style="font-size:12px;color:var(--ink-faint);font-weight:500;">건</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="perforation"></div>
+    <div class="receipt-note">
+      <span>ENGLISH SERVICE · 2026 H1 EXPENSE REPORT</span>
+      <span>PERIOD 2026.01.01 – 2026.07.31</span>
+    </div>
+  </div>
+
+  <!-- Section 1: Monthly trend -->
+  <section>
+    <div class="section-head">
+      <div class="num">01 — MONTHLY TREND</div>
+      <h2>월별 정기 · 비정기 지출 추이</h2>
+      <p>매월 지출이 정기 항목과 비정기 항목 중 어디에 더 쏠려 있는지 한눈에 보여줍니다.</p>
+    </div>
+    <div class="card">
+      <div class="chart-flex">
+        <div class="chart-box"><canvas id="monthlyChart"></canvas></div>
+        <div class="legend-simple" id="monthlyLegend"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Section 2: Category share -->
+  <section>
+    <div class="section-head">
+      <div class="num">02 — CATEGORY SHARE</div>
+      <h2>상반기 전체 항목별 지출 비중</h2>
+      <p>정기 3개, 비정기 4개 세부 항목이 상반기 전체 지출에서 차지하는 비중입니다.</p>
+    </div>
+    <div class="card">
+      <div class="chart-flex">
+        <div class="chart-box donut"><canvas id="donutChart"></canvas></div>
+        <div id="donutLegend"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Section 3: Monthly detail table -->
+  <section>
+    <div class="section-head">
+      <div class="num">03 — MONTHLY DETAIL</div>
+      <h2>월별 세부 지출 내역</h2>
+      <p>월 · 구분 · 세부 항목별 금액을 표로 정리했습니다.</p>
+    </div>
+    <div class="card">
+      <div class="scroll-hint">← 좌우로 스크롤하면 전체 항목을 볼 수 있어요 →</div>
+      <div class="table-scroll">
+        <table id="detailTable">
+          <thead>
+            <tr>
+              <th rowspan="2" class="grp grp-total" style="text-align:center;">월</th>
+              <th colspan="4" class="grp-regular" style="text-align:center;">정기</th>
+              <th colspan="5" class="grp-irregular" style="text-align:center;">비정기</th>
+              <th rowspan="2" class="grp-total" style="text-align:center;">월 합계</th>
+            </tr>
+            <tr>
+              <th class="grp-regular">간식비</th>
+              <th class="grp-regular">비품비</th>
+              <th class="grp-regular">스탭식교제비</th>
+              <th class="grp-regular">정기 소계</th>
+              <th class="grp-irregular">아웃리치</th>
+              <th class="grp-irregular">아가페밀</th>
+              <th class="grp-irregular">특별행사비</th>
+              <th class="grp-irregular">1주년 행사</th>
+              <th class="grp-irregular">비정기 소계</th>
+            </tr>
+          </thead>
+          <tbody id="detailBody"></tbody>
+          <tfoot id="detailFoot"></tfoot>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <div class="footnote">
+    <b>분류 기준</b> — 정기: 매월 반복되는 영어예배 간식비 · 비품비 · 스탭 식교제비(금요선교기도회 찬양팀 식사비 포함) &nbsp;|&nbsp;
+    비정기: 아웃리치(춘천) · 아가페밀(안산 아웃리치) · 특별행사비(스승의날 선물비) · 1주년 행사(기념품 · 식사교제비 · 교통비지원)
+  </div>
+
+</div>
+
+<script>
+const DATA = {
+  months: ["1월","2월","3월","4월","5월","6월","7월"],
+  regularCats: ["간식비","비품비","스탭식교제비"],
+  irregularCats: ["아웃리치","아가페밀","특별행사비","1주년 행사"],
+  monthlySummary: [
+    {"month":"1월","regular":{"간식비":0,"비품비":26890,"스탭식교제비":0},"irregular":{"아웃리치":0,"아가페밀":0,"특별행사비":0,"1주년 행사":0},"regular_total":26890,"irregular_total":0,"total":26890},
+    {"month":"2월","regular":{"간식비":72600,"비품비":2400,"스탭식교제비":0},"irregular":{"아웃리치":0,"아가페밀":0,"특별행사비":0,"1주년 행사":0},"regular_total":75000,"irregular_total":0,"total":75000},
+    {"month":"3월","regular":{"간식비":216050,"비품비":0,"스탭식교제비":259000},"irregular":{"아웃리치":0,"아가페밀":0,"특별행사비":0,"1주년 행사":0},"regular_total":475050,"irregular_total":0,"total":475050},
+    {"month":"4월","regular":{"간식비":83000,"비품비":44400,"스탭식교제비":0},"irregular":{"아웃리치":0,"아가페밀":573960,"특별행사비":0,"1주년 행사":0},"regular_total":127400,"irregular_total":573960,"total":701360},
+    {"month":"5월","regular":{"간식비":145000,"비품비":33390,"스탭식교제비":321000},"irregular":{"아웃리치":1441900,"아가페밀":760730,"특별행사비":100000,"1주년 행사":0},"regular_total":499390,"irregular_total":2302630,"total":2802020},
+    {"month":"6월","regular":{"간식비":121790,"비품비":0,"스탭식교제비":0},"irregular":{"아웃리치":0,"아가페밀":771010,"특별행사비":0,"1주년 행사":287500},"regular_total":121790,"irregular_total":1058510,"total":1180300},
+    {"month":"7월","regular":{"간식비":14000,"비품비":0,"스탭식교제비":0},"irregular":{"아웃리치":0,"아가페밀":157500,"특별행사비":0,"1주년 행사":257650},"regular_total":14000,"irregular_total":415150,"total":429150}
+  ],
+  catTotals: {"비품비":107080,"간식비":652440,"스탭식교제비":580000,"아가페밀":2263200,"특별행사비":100000,"아웃리치":1441900,"1주년 행사":545150},
+  grandTotal: 5689770,
+  regularTotal: 1339520,
+  irregularTotal: 4350250
+};
+
+const COLORS = {
+  regular: '#1F6F72',
+  irregular: '#B85A22',
+  cats: {
+    "간식비": '#1F6F72',
+    "비품비": '#4C9691',
+    "스탭식교제비": '#8FC0B7',
+    "아웃리치": '#B85A22',
+    "아가페밀": '#CC7C3F',
+    "특별행사비": '#DE9F5D',
+    "1주년 행사": '#EABE8B'
+  }
+};
+
+const won = n => new Intl.NumberFormat('ko-KR').format(Math.round(n));
+const pct = (n, total) => (total ? (n/total*100) : 0);
+
+// ---- Summary strip ----
+document.getElementById('grandTotal').innerHTML = won(DATA.grandTotal) + '<span>원</span>';
+document.getElementById('regTotal').textContent = won(DATA.regularTotal);
+document.getElementById('irrTotal').textContent = won(DATA.irregularTotal);
+document.getElementById('regPct').textContent = pct(DATA.regularTotal, DATA.grandTotal).toFixed(1) + '%';
+document.getElementById('irrPct').textContent = pct(DATA.irregularTotal, DATA.grandTotal).toFixed(1) + '%';
+
+// ---- Legend 1 (monthly regular/irregular) — independent of Chart.js ----
+const monthlyLegendEl = document.getElementById('monthlyLegend');
+[
+  { key:'regular_total', label:'정기', color:COLORS.regular, sub:'간식비 · 비품비 · 스탭식교제비' },
+  { key:'irregular_total', label:'비정기', color:COLORS.irregular, sub:'아웃리치 · 아가페밀 · 특별행사비 · 1주년 행사' }
+].forEach(item => {
+  const total = DATA.monthlySummary.reduce((s,m) => s + m[item.key], 0);
+  const div = document.createElement('div');
+  div.className = 'legend-item';
+  div.innerHTML = `
+    <div class="li-left">
+      <span class="legend-swatch" style="background:${item.color}"></span>
+      <div>
+        <div class="legend-name">${item.label}</div>
+        <div class="legend-sub">${item.sub}</div>
+      </div>
+    </div>
+    <div class="legend-right">
+      <div class="legend-amount">${won(total)}원</div>
+      <div class="legend-pct">${pct(total, DATA.grandTotal).toFixed(1)}% 비중</div>
+    </div>`;
+  monthlyLegendEl.appendChild(div);
+});
+
+// ---- Legend 2 (category breakdown, grouped) — independent of Chart.js ----
+const donutLegendEl = document.getElementById('donutLegend');
+function buildCatGroup(title, cats) {
+  const groupTitle = document.createElement('div');
+  groupTitle.className = 'legend-group-title';
+  groupTitle.textContent = title;
+  donutLegendEl.appendChild(groupTitle);
+  cats.forEach(c => {
+    const val = DATA.catTotals[c];
+    const row = document.createElement('div');
+    row.className = 'cat-row';
+    row.innerHTML = `
+      <span class="cat-swatch" style="background:${COLORS.cats[c]}"></span>
+      <span class="cat-name">${c}</span>
+      <span class="cat-amount mono">${won(val)}원</span>
+      <span class="cat-pct mono">${pct(val, DATA.grandTotal).toFixed(1)}%</span>`;
+    donutLegendEl.appendChild(row);
+  });
+}
+buildCatGroup('정기 항목', DATA.regularCats);
+buildCatGroup('비정기 항목', DATA.irregularCats);
+
+// ---- Table — independent of Chart.js ----
+const tbody = document.getElementById('detailBody');
+DATA.monthlySummary.forEach(m => {
+  const tr = document.createElement('tr');
+  const cell = (v, cls) => `<td class="${cls || ''} ${v===0?'zero':''}">${won(v)}</td>`;
+  tr.innerHTML = `
+    <td>${m.month}</td>
+    ${cell(m.regular["간식비"])}
+    ${cell(m.regular["비품비"])}
+    ${cell(m.regular["스탭식교제비"])}
+    ${cell(m.regular_total, 'subtotal-reg')}
+    ${cell(m.irregular["아웃리치"])}
+    ${cell(m.irregular["아가페밀"])}
+    ${cell(m.irregular["특별행사비"])}
+    ${cell(m.irregular["1주년 행사"])}
+    ${cell(m.irregular_total, 'subtotal-irr')}
+    ${cell(m.total)}
+  `;
+  tbody.appendChild(tr);
+});
+
+const tfoot = document.getElementById('detailFoot');
+const sumCat = (group, cat) => DATA.monthlySummary.reduce((s,m) => s + m[group][cat], 0);
+const totRegular = DATA.regularTotal, totIrregular = DATA.irregularTotal;
+tfoot.innerHTML = `
+  <tr>
+    <td>합계</td>
+    <td>${won(sumCat('regular','간식비'))}</td>
+    <td>${won(sumCat('regular','비품비'))}</td>
+    <td>${won(sumCat('regular','스탭식교제비'))}</td>
+    <td>${won(totRegular)}</td>
+    <td>${won(sumCat('irregular','아웃리치'))}</td>
+    <td>${won(sumCat('irregular','아가페밀'))}</td>
+    <td>${won(sumCat('irregular','특별행사비'))}</td>
+    <td>${won(sumCat('irregular','1주년 행사'))}</td>
+    <td>${won(totIrregular)}</td>
+    <td>${won(DATA.grandTotal)}</td>
+  </tr>
+`;
+
+// ---- Charts (wrapped so a CDN/canvas failure never blocks the table/legends above) ----
+try {
+if (typeof Chart === 'undefined') throw new Error('Chart.js failed to load');
+
+// Chart 1: monthly stacked bar
+const ctx1 = document.getElementById('monthlyChart').getContext('2d');
+new Chart(ctx1, {
+  type: 'bar',
+  data: {
+    labels: DATA.months,
+    datasets: [
+      {
+        label: '정기',
+        data: DATA.monthlySummary.map(m => m.regular_total),
+        backgroundColor: COLORS.regular,
+        borderRadius: 4,
+        borderSkipped: false,
+        maxBarThickness: 46
+      },
+      {
+        label: '비정기',
+        data: DATA.monthlySummary.map(m => m.irregular_total),
+        backgroundColor: COLORS.irregular,
+        borderRadius: 4,
+        borderSkipped: false,
+        maxBarThickness: 46
+      }
+    ]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    interaction: { mode: 'index', intersect: false },
+    scales: {
+      x: { stacked: true, grid: { display: false }, ticks: { font: { family: "'IBM Plex Sans KR'", size: 12.5 }, color: '#5B6461' } },
+      y: {
+        stacked: true,
+        grid: { color: '#E3DDCC' },
+        ticks: {
+          font: { family: "'IBM Plex Mono'", size: 11 },
+          color: '#8B8779',
+          callback: v => (v/10000) + '만'
+        }
+      }
+    },
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        backgroundColor: '#212B2A',
+        titleFont: { family: "'IBM Plex Sans KR'", weight: '600' },
+        bodyFont: { family: "'IBM Plex Mono'" },
+        padding: 12,
+        cornerRadius: 8,
+        callbacks: {
+          label: ctx => ` ${ctx.dataset.label}  ${won(ctx.parsed.y)}원`
+        }
+      }
+    }
+  }
+});
+
+// Chart 2: donut
+const donutLabels = [...DATA.regularCats, ...DATA.irregularCats];
+const donutValues = donutLabels.map(c => DATA.catTotals[c]);
+const donutColors = donutLabels.map(c => COLORS.cats[c]);
+
+const ctx2 = document.getElementById('donutChart').getContext('2d');
+new Chart(ctx2, {
+  type: 'doughnut',
+  data: {
+    labels: donutLabels,
+    datasets: [{
+      data: donutValues,
+      backgroundColor: donutColors,
+      borderColor: '#FFFFFF',
+      borderWidth: 3,
+      hoverOffset: 8
+    }]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    cutout: '62%',
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        backgroundColor: '#212B2A',
+        titleFont: { family: "'IBM Plex Sans KR'", weight: '600' },
+        bodyFont: { family: "'IBM Plex Mono'" },
+        padding: 12,
+        cornerRadius: 8,
+        callbacks: {
+          label: ctx => ` ${won(ctx.parsed)}원  (${pct(ctx.parsed, DATA.grandTotal).toFixed(1)}%)`
+        }
+      }
+    }
+  },
+  plugins: [{
+    id: 'centerText',
+    afterDraw(chart) {
+      const {ctx, chartArea:{width, height, left, top}} = chart;
+      ctx.save();
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.font = "600 13px 'IBM Plex Mono'";
+      ctx.fillStyle = '#8B8779';
+      ctx.fillText('상반기 총액', left + width/2, top + height/2 - 12);
+      ctx.font = "700 20px 'IBM Plex Mono'";
+      ctx.fillStyle = '#212B2A';
+      ctx.fillText(won(DATA.grandTotal) + '원', left + width/2, top + height/2 + 12);
+      ctx.restore();
+    }
+  }]
+});
+
+} catch (err) {
+  console.error('차트를 그리지 못했습니다:', err);
+  document.querySelectorAll('.chart-box').forEach(box => {
+    box.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#8B8779;font-size:13px;">차트를 불러오지 못했습니다. 표와 범례의 수치는 정상입니다.</div>';
+  });
+}
+</script>
+</body>
+</html>
